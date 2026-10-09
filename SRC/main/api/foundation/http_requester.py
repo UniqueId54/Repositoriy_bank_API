@@ -1,0 +1,12 @@
+#SRC.main.api.
+from typing import Callable, Dict
+from SRC.main.api.foundation.endpoint import Endpoint
+
+
+#базовый скелет для нашего запроса
+class HTTPRequester:
+    def __init__(self, request_spec: Dict, endpoint: Endpoint, response_spec: Callable):
+        self.request_spec = request_spec
+        self.endpoint = endpoint
+        self.response_spec = response_spec
+
