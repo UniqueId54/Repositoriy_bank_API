@@ -5,6 +5,7 @@ from SRC.main.api.db.crud.user_crud import UserCrudDb as User
 from SRC.main.api.classes.api_manager import ApiManager
 from sqlalchemy.orm import Session
 
+
 @pytest.mark.api
 class TestCreateUser:
     # проверка авторизации админа и получение админ токена
@@ -16,11 +17,11 @@ class TestCreateUser:
                                db_session: Session):
         response = api_manager.admin_steps.create_user(create_user_request)
 
-        assert create_user_request.username == response.username
-        assert create_user_request.role == response.role
+        assert create_user_request.username == response.username, 'Имя созданного пользователя совпадать с запросом'
+        assert create_user_request.role == response.role, 'Роль созданного пользователя совпадать с запросом'
 
         user_from_db = User.get_user_by_username(db_session, create_user_request.username)
-        assert user_from_db.username == create_user_request.username, 'Созданного пользователя нет в БД'
+        assert user_from_db.username == create_user_request.username, 'Имя пользователя в БД должно совпадать с запросом'
 
     # прогон входных данных, заведомо ложных, различного характера по условию к проекту
     @pytest.mark.parametrize("username,password",
@@ -33,7 +34,7 @@ class TestCreateUser:
                               ("Maxx4", "PAS!SWORD"),
                               ("Maxx5", "PASSSWORD"),
                               ("Maxx6", "PAS!SWRRD")])
-    def test_create_user_invalid(self, username: str, password: str, api_manager:ApiManager, db_session: Session):
+    def test_create_user_invalid(self, username: str, password: str, api_manager: ApiManager, db_session: Session):
         create_user_request = CreateUserRequest(username=username, password=password, role="ROLE_USER")
         api_manager.admin_steps.create_invalid_user(create_user_request)
         user_from_db = User.get_user_by_username(db_session, create_user_request.username)

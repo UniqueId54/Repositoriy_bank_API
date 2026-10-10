@@ -7,36 +7,28 @@ from SRC.main.api.db.crud.account_crud import AccountCrudDb as Acc
 
 from SRC.main.api.fixtures.db_fixture import db_session
 from SRC.main.api.classes.api_manager import ApiManager
+from SRC.main.api.models.deposit_account_request import DepositAccountRequest
 
 
 # SRC.main.api.
 class TestDepositAccount:
-    @pytest.mark.parametrize(
-        "create_user_request",
-        [RandomModelGenerator.generate(CreateUserRequest)]
-    )
-    def test_deposit_account(self, api_manager: ApiManager, create_user_request:CreateUserRequest, db_session: Session):
-        user = api_manager.admin_steps.create_user(create_user_request)
-        acc = api_manager.user_steps.create_account(create_user_request)
-        dep_amount = 1000
-        dep = api_manager.user_steps.deposit_account(acc.id, dep_amount)
-        assert dep.balance == 1000
+    @pytest.mark.parametrize("dep_amount", [RandomModelGenerator.generate(DepositAccountRequest).amount])
+    def test_deposit_account(self, api_manager: ApiManager, account_for_deposit,
+                             db_session: Session, dep_amount: float):
+
+        dep = api_manager.user_steps.deposit_account(account_for_deposit.id, dep_amount)
+        assert dep.balance == dep_amount
 
         account_from_db = Acc.get_account_by_id(db_session, dep.id)
         assert account_from_db.id == dep.id, 'Id кошелька нет в БД'
 
 
-    # прогон входных данных, заведомо ложных, различного характера по условию к проекту
-    @pytest.mark.parametrize(
-        "create_user_request",
-        [RandomModelGenerator.generate(CreateUserRequest)]
-    )
+    @pytest.mark.parametrize("dep_amount", [RandomModelGenerator.generate(DepositAccountRequest).amount])
     @pytest.mark.parametrize("amount", [500, 10000])
-    def test_deposit_account_invalid(self, api_manager, create_user_request:CreateUserRequest, amount: int, db_session: Session):
-        api_manager.admin_steps.create_user(create_user_request)
-        acc_invalid = api_manager.user_steps.create_account(create_user_request)
-        dep = api_manager.user_steps.deposit_account_invalid(acc_invalid.id, amount)
+    def test_deposit_account_invalid(self, api_manager: ApiManager, account_for_deposit,
+                             db_session: Session, dep_amount: float, amount: int):
 
-        account_from_db = Acc.get_account_by_id(db_session, dep.id)
-        assert account_from_db.id == dep.id, 'Id кошелька нет в БД'
+        dep = api_manager.user_steps.deposit_account_invalid(account_for_deposit.id, amount)
 
+        account_from_db = Acc.get_account_by_id(db_session, account_for_deposit.id)
+        assert account_from_db.balance == 0, 'Баланс нового кошелька не должен быть изменен'

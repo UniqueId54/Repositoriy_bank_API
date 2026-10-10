@@ -9,6 +9,6 @@ class CreditCrudDb:
         return db.query(Credit).filter_by(amount=amount).first()
 
     @staticmethod
-    def get_credit_account_id(db: Session, account_id: int) -> Credit | None:
+    def get_credit_by_account_id(db: Session, account_id: int) -> Credit | None:
         return db.query(Credit).filter_by(account_id=account_id).first()
 

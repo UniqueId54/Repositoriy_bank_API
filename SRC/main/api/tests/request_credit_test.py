@@ -4,40 +4,34 @@ from SRC.main.api.generators.model_generator import RandomModelGenerator
 from SRC.main.api.classes.api_manager import ApiManager
 from sqlalchemy.orm import Session
 from SRC.main.api.db.crud.credit_crud import CreditCrudDb as Cr
+from SRC.main.api.models.deposit_account_request import DepositAccountRequest
+from SRC.main.api.models.credit_user_request import CreditUserRequest
 
 
 @pytest.mark.api
 class TestRequestCredit:
     # утилита-генератор тестовых данных
-    @pytest.mark.parametrize(
-        "create_user_credit_request",
-        [RandomModelGenerator.generate(CreateUserCreditRequest)]
-    )
-    def test_request_credit(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
-                            db_session: Session):
-        api_manager.admin_steps.create_user_credit(create_user_credit_request)  # регистрация кредитного пользователя
-        response = api_manager.user_steps.create_account_credit(
-            create_user_credit_request)  # создание счета для кредита
-        assert response.balance == 0
-        credit = api_manager.user_steps.request_credit(response.id, 5000, 12)
-        assert credit.amount == 5000
 
-        credit_from_db = Cr.get_credit_by_id(db_session, credit.accountId)
-        assert credit_from_db.account_id == credit.accountId, 'Id кошелька для кредита не попал в БД'
+    @pytest.mark.parametrize("dep_amount", [RandomModelGenerator.generate(CreditUserRequest).amount])
+    @pytest.mark.parametrize('create_user_credit_request', [RandomModelGenerator.generate(CreateUserCreditRequest)])
+    def test_request_credit(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
+                            db_session: Session, dep_amount: float, create_account_credit):
+        credit = api_manager.user_steps.request_credit(create_account_credit.id, dep_amount, 12)
+        assert credit.amount == dep_amount, 'Сумма запрошенного кредита должна быть равна заявленной'
+
+        credit_from_db = Cr.get_credit_by_account_id(db_session, credit.accountId)
+        assert credit_from_db.account_id == credit.accountId, 'ID кредита в БД должен совпадать с ответом API'
 
     @pytest.mark.parametrize(
         "create_user_credit_request",
         [RandomModelGenerator.generate(CreateUserCreditRequest)]
     )
     @pytest.mark.parametrize("amount", [1000])
-    def test_request_credit_invalid(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
-                                    amount: int, db_session: Session):
-        api_manager.admin_steps.create_user_credit(
-            create_user_credit_request)  # регистрация кредитного пользователя
-        response = api_manager.user_steps.create_account_credit(
-            create_user_credit_request)  # создание счета для кредита
-        assert response.balance == 0
-        cred = api_manager.user_steps.request_credit_invalid(response.id, amount, 12)
+    def test_request_credit_invalid(self, api_manager: ApiManager, amount: int, db_session: Session,
+                                    create_user_credit_request: CreateUserCreditRequest,
+                                    create_account_credit):
 
-        acc_id_db = Cr.get_credit_account_id(db_session, response.id)
-        assert acc_id_db is None
+        cred = api_manager.user_steps.request_credit_invalid(create_account_credit.id, amount, 12)
+
+        acc_id_db = Cr.get_credit_by_account_id(db_session, create_account_credit.id)
+        assert acc_id_db is None, 'Кредит не должен был создаться'

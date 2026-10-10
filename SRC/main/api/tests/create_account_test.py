@@ -10,4 +10,4 @@ class TestCreateAccount:
     # вход как админ
     def test_create_account(self, api_manager: ApiManager, create_user_request: CreateUserRequest, db_session: Session):
         response = api_manager.user_steps.create_account(create_user_request)
-        assert response.balance == 0
+        assert response.balance == 0, 'Баланс нового банковского аккаунта должен быть 0'

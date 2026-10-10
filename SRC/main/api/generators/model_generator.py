@@ -23,7 +23,7 @@ class RandomModelGenerator:
                         rule = ann
 
             if rule:# есть правило с regex, генерация строки по нему ( и приведение к типу)
-                value = RandomModelGenerator._generate_from_regex(rule.regex, actual_type)
+                value = RandomModelGenerator._generate_from_rule(rule, actual_type)
             else: # иначе генерация значения по типу (поле без annotated)
                 value = RandomModelGenerator._generate_value(actual_type)
 
@@ -55,4 +55,24 @@ class RandomModelGenerator:
             return [str(uuid.uuid4())[:5]]
         elif isinstance(field_type, type):
             return RandomModelGenerator.generate(field_type)
+        return None
+
+    @staticmethod
+    def _generate_from_rule(rule: CreationRule, field_type: type) -> Any:
+        # 1. Числовой диапазон (приоритет)
+        if rule.min_value is not None and rule.max_value is not None:
+            if field_type is int:
+                return random.randint(rule.min_value, rule.max_value)
+            if field_type is float:
+                return round(random.uniform(rule.min_value, rule.max_value), 2)
+
+        # 2. Regex
+        if rule.regex:
+            generated = rstr.xeger(rule.regex)
+            if field_type is int:
+                return int(generated)
+            if field_type is float:
+                return float(generated)
+            return generated
+
         return None

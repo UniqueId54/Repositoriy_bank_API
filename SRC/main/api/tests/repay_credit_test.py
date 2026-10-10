@@ -6,46 +6,30 @@ from SRC.main.api.generators.model_generator import RandomModelGenerator
 from SRC.main.api.classes.api_manager import ApiManager
 from sqlalchemy.orm import Session
 from SRC.main.api.db.crud.credit_crud import CreditCrudDb as Cr
+from SRC.main.api.models.credit_user_request import CreditUserRequest
+from SRC.main.api.models.credit_repay_response import CreditRepayResponse
+
 
 @pytest.mark.api
 class TestRepayCredit:
-    # утилита-генератор тестовых данных
-    @pytest.mark.parametrize(
-        "create_user_credit_request",
-        [RandomModelGenerator.generate(CreateUserCreditRequest)]
-    )
-    def test_repay_credit(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
-                            db_session: Session):
-        api_manager.admin_steps.create_user_credit(create_user_credit_request)  # регистрация кредитного пользователя
-        response = api_manager.user_steps.create_account_credit(
-            create_user_credit_request)  # создание счета для кредита
-        assert response.balance == 0
-        credit = api_manager.user_steps.request_credit(response.id, 5000, 12)
-        repay = api_manager.user_steps.repay_credit(credit.creditId, credit.accountId, credit.amount)
-        assert repay.creditId == credit.creditId
+    @pytest.mark.parametrize("credit_amount", [RandomModelGenerator.generate(CreditUserRequest).amount])
+    def test_repay_credit(self, api_manager: ApiManager, create_account_credit, db_session: Session,
+                          credit_amount: float):
+        credit = api_manager.user_steps.request_credit(create_account_credit.id, credit_amount, 12)
+        repay = api_manager.user_steps.repay_credit(credit.creditId, credit.accountId,
+                                                    credit_amount)
+        assert repay.amountDeposited == credit_amount, 'Погасилась вся сумма'
 
         amount_from_db = Cr.get_credit_by_amount(db_session, repay.amountDeposited)
-        assert amount_from_db.amount == repay.amountDeposited, 'Сумма погашения не внеслась в БД'
+        assert amount_from_db.amount == repay.amountDeposited, 'Сумма погашения должна совпадать с ответом'
 
-    @pytest.mark.parametrize(
-            "create_user_credit_request",
-            [RandomModelGenerator.generate(CreateUserCreditRequest)]
-        )
-    @pytest.mark.parametrize("amount, amount_repay", [(5000, 3000)]) # негативные тестовые данные, когда сумма погашен
+    @pytest.mark.parametrize("credit_amount", [RandomModelGenerator.generate(CreditUserRequest).amount])
+    def test_repay_credit_invalid(self, api_manager: ApiManager, create_account_credit, db_session: Session,
+                                  credit_amount: float):
+        credit = api_manager.user_steps.request_credit(create_account_credit.id, credit_amount, 12)
+        amount_repay = round(credit_amount / 2, 2)
+        repay = api_manager.user_steps.repay_credit_invalid(credit.creditId, credit.accountId,
+                                                            amount_repay)
 
-    def test_repay_credit_invalid(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
-                                        amount: int, amount_repay: int, db_session: Session):
-        api_manager.admin_steps.create_user_credit(
-                create_user_credit_request)  # регистрация кредитного пользователя
-        response = api_manager.user_steps.create_account_credit(
-                create_user_credit_request)  # создание счета для кредита
-        assert response.balance == 0
-        credit = api_manager.user_steps.request_credit(response.id, amount, 12)
-        api_manager.user_steps.repay_credit_invalid(credit.creditId, credit.accountId, amount_repay)
-
-        acc_id_db = Cr.get_credit_account_id(db_session, credit.accountId)
-        assert acc_id_db.account_id == credit.accountId, 'ID кошелька не внесен в БД'
-
-
-
-
+        amount_from_db = Cr.get_credit_by_amount(db_session, credit.balance)
+        assert amount_from_db.amount is not None, 'Кредит не найден'
