@@ -1,1 +1,0 @@
-[33mWARNING [0m root:object_fixture.py:22 Error in delete user_id:277

@@ -25,28 +25,19 @@ class TestRequestCredit:
         credit_from_db = Cr.get_credit_by_id(db_session, credit.accountId)
         assert credit_from_db.account_id == credit.accountId, 'Id кошелька для кредита не попал в БД'
 
-
-
     @pytest.mark.parametrize(
-            "create_user_credit_request",
-            [RandomModelGenerator.generate(CreateUserCreditRequest)]
-        )
+        "create_user_credit_request",
+        [RandomModelGenerator.generate(CreateUserCreditRequest)]
+    )
     @pytest.mark.parametrize("amount", [1000])
-
     def test_request_credit_invalid(self, api_manager: ApiManager, create_user_credit_request: CreateUserCreditRequest,
-                                        amount: int, db_session: Session):
+                                    amount: int, db_session: Session):
         api_manager.admin_steps.create_user_credit(
-                create_user_credit_request)  # регистрация кредитного пользователя
+            create_user_credit_request)  # регистрация кредитного пользователя
         response = api_manager.user_steps.create_account_credit(
-                create_user_credit_request)  # создание счета для кредита
+            create_user_credit_request)  # создание счета для кредита
         assert response.balance == 0
         cred = api_manager.user_steps.request_credit_invalid(response.id, amount, 12)
 
-
-        acc_id_db = Cr.get_credit_account_id(db_session, response.id) is None
-
-
-
-
-
-
+        acc_id_db = Cr.get_credit_account_id(db_session, response.id)
+        assert acc_id_db is None
