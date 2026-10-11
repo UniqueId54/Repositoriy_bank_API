@@ -7,4 +7,4 @@ from typing import Annotated
 class CreditUserRequest(BaseModel):
     accountId: int # id кошелька
     amount: Annotated[float, CreationRule(regex=r"^([5-9]\d{3}|1[0-4]\d{3}|15000)$")]
-    termMonths: int
+    termMonths: Annotated[int, CreationRule(regex=r"^[1-9]|1[0-2]$")]
